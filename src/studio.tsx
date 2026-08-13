@@ -66,7 +66,19 @@ function ModelView(){
 }
 function SecurityView(){const{project,update}=useStudio();if(!project)return null;const active=project.security.activeRoleId;return <div className="page"><div className="panelHeader"><div><span className="eyebrow">SECURITY ENGINE</span><h2>Row-Level Security</h2><p>Security predicates are applied by the semantic query planner before database execution.</p></div></div><div className="securityGrid"><div className="securityCard"><ShieldCheck size={28}/><h3>View as Role</h3><p>Simulate a consumer security context across every report query.</p><select value={active||''} onChange={e=>update(p=>{p.security.activeRoleId=e.target.value||null;return p})}><option value="">No simulation</option>{project.security.roles.map((r:any)=><option value={r.id} key={r.id}>{r.name}</option>)}</select>{active&&<div className="simulation">⚠ Simulation is active</div>}</div>{project.security.roles.map((r:any)=><div className="securityCard" key={r.id}><span className="pill">ROLE</span><h3>{r.name}</h3>{r.rules.map((x:any,i:number)=><div className="rule" key={i}><b>{x.table}.{x.column}</b><span>=</span><code>{x.value}</code></div>)}<button>Edit role</button></div>)}<button className="securityCard addRole"><Plus size={26}/><b>Create security role</b></button></div></div>}
 import { isSupabaseConfigured, supabase } from './supabase';
-const workspacePortalUrl=(ask=false)=>{const configured=(import.meta.env.VITE_WEB_URL||localStorage.getItem('vtab_web_workspace_url')||'').trim().replace(/\/+$/,'');if(configured)return configured;if(!ask)return '';const value=(window.prompt('Web Workspace URL','http://localhost:4173')||'').trim().replace(/\/+$/,'');if(value)localStorage.setItem('vtab_web_workspace_url',value);return value};
+const workspacePortalUrl = (ask = false) => {
+  let stored = localStorage.getItem('vtab_web_workspace_url') || '';
+  if (stored.includes('localhost:4173')) {
+    localStorage.removeItem('vtab_web_workspace_url');
+    stored = '';
+  }
+  const configured = (import.meta.env.VITE_WEB_URL || stored || '').trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  if (!ask) return '';
+  const value = (window.prompt('Web Workspace URL', 'https://reporting-tool-2.vercel.app') || '').trim().replace(/\/+$/, '');
+  if (value) localStorage.setItem('vtab_web_workspace_url', value);
+  return value;
+};
 const openWorkspaceReport=(id:string,share=true,target?:Window|null)=>{const base=workspacePortalUrl(true);if(!base){target?.close();return}const url=`${base}/?workspace=1&report=${encodeURIComponent(id)}${share?'&share=1':''}`;if(target)target.location.href=url;else window.open(url,'_blank')};
 const cloudSession=async()=>{if(!supabase)throw new Error('Supabase client is not configured.');const{data,error}=await supabase.auth.getSession();if(error)throw error;if(!data.session?.user?.id)throw new Error('Please sign in before publishing to the web workspace.');return data.session};
 const cloudPublishProject=async(project:any)=>{await cloudSession();const snapshot=structuredClone(project);const reportId=snapshot.report?.id||crypto.randomUUID();snapshot.report={...(snapshot.report||{}),id:reportId};const name=(snapshot.report?.name||snapshot.name||'Untitled Report').trim();const{data,error}=await supabase!.rpc('publish_report_for_user',{p_report_id:reportId,p_name:name,p_project_json:JSON.stringify(snapshot)});if(error){const m=error.message||String(error);if(/publish_report_for_user|schema cache|function/i.test(m))throw new Error('Supabase publish setup is missing. Run apps/api/supabase_rpc.sql in the Supabase SQL Editor, then retry Publish.');throw error}if(data?.error)throw new Error(data.error);return{ok:true,id:data?.id||reportId,name:data?.name||name,publishedAt:data?.published_at}};
