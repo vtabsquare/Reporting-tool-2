@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase";
+import { api } from "../api";
 
 type Role = "Viewer" | "Co-Owner";
 type Grant = { email: string; role: Role; granted_at?: string };
@@ -82,6 +83,16 @@ export default function ShareDialog({ reportId, reportName, onClose, supabaseSes
       setSuccess(`${sharedEmail} added as ${role}. They must sign in with this registered account to view the report.`);
       setEmail("");
       loadShares();
+
+      // Trigger email notification via the backend API
+      api(`/published/${reportId}/share-email`, {
+        method: 'POST',
+        body: JSON.stringify({
+          to: sharedEmail,
+          role: role,
+          reportUrl: reportUrl
+        })
+      }).catch(err => console.warn('Failed to trigger email notification:', err));
     } catch (e: any) {
       setErr(e.message || String(e));
     } finally {
