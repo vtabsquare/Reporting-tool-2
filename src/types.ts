@@ -1,0 +1,33 @@
+export type VisualType='kpi'|'card'|'multirowcard'|'bar'|'column'|'stackedbar'|'stackedcolumn'|'line'|'area'|'combo'|'pie'|'donut'|'treemap'|'funnel'|'waterfall'|'scatter'|'bubble'|'radar'|'heatmap'|'histogram'|'boxplot'|'gauge'|'progress'|'table'|'matrix'|'slicer'|'textbox'|'button';
+export type VisualFilter={field:string,operator:string,value:any};
+export type DisplayUnits='auto'|'none'|'thousand'|'million'|'billion'|'trillion';
+export type NumberStyle='number'|'currency'|'percentage';
+export type NegativeStyle='minus'|'parentheses';
+export type NumberFormat={
+  style?:NumberStyle; currency?:string; decimals?:number; displayUnits?:DisplayUnits;
+  thousandsSeparator?:boolean; negativeStyle?:NegativeStyle; prefix?:string; suffix?:string;
+};
+export type VisualFormat={
+  accent:string; fontSize:number; showTitle:boolean; dataLabels:boolean; background?:string; fontFamily?:string;
+  fieldFormats?:Record<string,NumberFormat>; titleFontSize?:number; titleColor?:string; labelFontSize?:number;
+  labelColor?:string; labelPosition?:'top'|'inside'|'outside'; legendVisible?:boolean;
+  legendPosition?:'top'|'bottom'|'left'|'right'; borderVisible?:boolean; borderColor?:string; borderWidth?:number;
+  cornerRadius?:number; cornerRadii?:CornerRadii; cornerLinked?:boolean; shadow?:boolean; backgroundTransparency?:number; gridLines?:boolean; borderStyle?:'solid'|'dashed'|'dotted'; borderEdges?:BorderEdges;
+  showDataPoints?:boolean; dataPointSize?:number; tooltipEnabled?:boolean; tooltipBackground?:string; tooltipColor?:string; indicatorEnabled?:boolean;
+  favorableDirection?:'up'|'down'; positiveColor?:string; negativeColor?:string; neutralColor?:string;
+  subtitle?:string; subtitleVisible?:boolean; subtitleColor?:string; subtitleFontSize?:number;
+  titleFontWeight?:number; axisFontSize?:number; axisColor?:string; axisTitleVisible?:boolean;
+  markerShape?:'circle'|'rect'|'roundRect'|'triangle'|'diamond'; lineWidth?:number; smoothLines?:boolean;
+  barRadius?:number; barWidth?:number; padding?:number; chartOpacity?:number;
+};
+export type VisualBindings={axis?:string[],values?:string[],target?:string[],legend?:string[],tooltips?:string[],hierarchy?:{id:string,level:number}};
+export type VisualSort={field:string,direction:'asc'|'desc'};
+export type BorderEdges={top?:boolean,right?:boolean,bottom?:boolean,left?:boolean};
+export type CornerRadii={topLeft?:number,topRight?:number,bottomRight?:number,bottomLeft?:number};
+export type VisualAction={type?:'none'|'navigate'|'toggleVisual'|'showVisual'|'hideVisual'|'clearFilters',targetPageId?:string,targetVisualId?:string};
+export type SlicerStyle='list'|'dropdown'|'verticalTiles'|'horizontalTiles';
+export type Visual={id:string,type:VisualType,title:string,x:number,y:number,w:number,h:number,bindings:VisualBindings,filters?:VisualFilter[],sort?:VisualSort[],format:VisualFormat,text?:string,buttonLabel?:string,action?:VisualAction,slicerStyle?:SlicerStyle,hidden?:boolean};
+export type PageHeader={visible:boolean,title:string,subtitle:string,fontSize:number,subtitleFontSize?:number,titleColor:string,subtitleColor:string,alignment:'left'|'center'|'right',background:string,height?:number,paddingTop?:number,paddingBottom?:number,paddingLeft?:number,paddingRight?:number,borderRadius?:number,showGeneratedInfo?:boolean,generatedInfoBackground?:string};
+export type PageSettings={background:string,wallpaper?:string,backgroundImage?:string,backgroundImageFit?:'cover'|'contain'|'stretch'|'center',backgroundImageOpacity?:number,themeId?:string,pageWidth?:number,pageHeight?:number,pageSizePreset?:'HD 16:9'|'Full HD 16:9'|'QHD 16:9'|'16:10'|'4:3'|'A4 Landscape'|'A4 Portrait'|'Custom',pageAlignment?:'center'|'left',showGrid?:boolean,snapToGrid?:boolean,allowOverlap?:boolean,autoFitHeight?:boolean,footerGap?:number,navigationPosition?:'outside'|'sticky',navigationTopMargin?:number,navigationBottomMargin?:number,header:PageHeader,showNavigation:boolean};
+export type Page={id:string,name:string,visuals:Visual[],filters?:VisualFilter[],settings?:PageSettings};
+export type Project={id:string,name:string,appTheme?:'vtab'|'black'|'white',appAccent?:string,uiDensity?:'compact'|'comfortable'|'spacious',model:any,transform:any,report:{id:string,name:string,activePageId:string,pages:Page[],filters?:VisualFilter[]},security:any};
