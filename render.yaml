@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: vtab-backend-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cloud_backend.py
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: VTAB_SMTP_FROM
+        sync: false
+      - key: VTAB_ALLOWED_ORIGINS
+        sync: false
+      - key: PORT
+        value: 8820
