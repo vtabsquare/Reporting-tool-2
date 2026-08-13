@@ -5,7 +5,13 @@
 // In any of these cases we MUST use the absolute backend URL because
 // there is no dev-server proxy available in the packaged app.
 const _envBaseRaw=(import.meta as any).env?.VITE_API_URL;
-const _envBase=typeof _envBaseRaw==='string'&&!/\.supabase\.co\/api\/v1\/?$/i.test(_envBaseRaw)?_envBaseRaw:undefined;
+let _envBase: string | undefined = undefined;
+if (typeof _envBaseRaw === 'string' && !/\.supabase\.co/i.test(_envBaseRaw)) {
+  _envBase = _envBaseRaw.replace(/\/+$/, ''); // strip trailing slash
+  if (!_envBase.endsWith('/api/v1')) {
+    _envBase += '/api/v1'; // auto-append path if user forgot it
+  }
+}
 const _isTauri=typeof window!=='undefined'&&(
   window.location.protocol==='tauri:'||
   window.location.hostname==='tauri.localhost'||
