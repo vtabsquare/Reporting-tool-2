@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabase";
+import { api, apiForm } from "../api";
 import PublishedViewer from "./PublishedViewer";
 import ShareDialog from "./ShareDialog";
 
@@ -43,8 +44,8 @@ export default function CloudWorkspace({ session }: { session: any }) {
       setLoading(true); setErr(""); setTargetDenied("");
       const r = await fetchReports();
       setReports(r);
-      const res = await fetch('/api/v1/cloud/workspaces', { headers: { 'Authorization': `Bearer ${session?.access_token}` } });
-      if (res.ok) setWorkspaces(await res.json());
+      const res = await api<any[]>('/cloud/workspaces');
+      if (res) setWorkspaces(res);
       const target = workspaceTarget();
       if (target.reportId && !r.some((x:any) => x.id === target.reportId)) setTargetDenied("This report is not shared with the signed-in account.");
     } catch (e: any) { setErr(e.message || String(e)); } finally { setLoading(false); }
@@ -98,10 +99,7 @@ export default function CloudWorkspace({ session }: { session: any }) {
     setUploading(true);
     const form = new FormData(); form.append('file', file);
     try {
-      const res = await fetch('/api/v1/cloud/upload-package', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token}` }, body: form
-      });
-      if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+      await apiForm('/cloud/upload-package', form);
       alert('Package uploaded successfully!');
       loadData();
     } catch (err: any) { alert(err.message); } finally { setUploading(false); if (fileInput.current) fileInput.current.value = ''; }
@@ -111,18 +109,13 @@ export default function CloudWorkspace({ session }: { session: any }) {
     const name = prompt("Enter workspace name:");
     if (!name) return;
     try {
-      const res = await fetch('/api/v1/cloud/workspaces', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+      const data = await api<any>('/cloud/workspaces', {
+        method: 'POST',
         body: JSON.stringify({ name })
       });
-      const data = await res.json();
-      if (res.ok) {
-        await loadData();
-        if (data.id) {
-          loadWorkspace(data.id);
-        }
-      } else {
-        alert(data.detail || 'Failed to create workspace');
+      await loadData();
+      if (data.id) {
+        loadWorkspace(data.id);
       }
     } catch (err: any) {
       alert(err.message || String(err));
@@ -130,25 +123,22 @@ export default function CloudWorkspace({ session }: { session: any }) {
   };
 
   const loadWorkspace = async (id: string) => {
-    const res = await fetch(`/api/v1/cloud/workspaces/${id}`, { headers: { 'Authorization': `Bearer ${session?.access_token}` } });
-    if (res.ok) setActiveWorkspace(await res.json()); else alert((await res.json()).detail || 'Failed to load workspace details');
+    try {
+      const data = await api<WorkspaceDetail>(`/cloud/workspaces/${id}`);
+      setActiveWorkspace(data);
+    } catch (err: any) {
+      alert(err.message || 'Failed to load workspace details');
+    }
   };
 
   const deleteWorkspace = async () => {
     if (!activeWorkspace) return;
     if (!confirm(`Are you sure you want to delete workspace "${activeWorkspace.name}"? This action cannot be undone.`)) return;
     try {
-      const res = await fetch(`/api/v1/cloud/workspaces/${activeWorkspace.id}`, {
-        method: 'DELETE', headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (res.ok) {
-        alert('Workspace deleted successfully!');
-        setActiveWorkspace(null);
-        loadData();
-      } else {
-        const data = await res.json();
-        alert(data.detail || 'Failed to delete workspace');
-      }
+      await api(`/cloud/workspaces/${activeWorkspace.id}`, { method: 'DELETE' });
+      alert('Workspace deleted successfully!');
+      setActiveWorkspace(null);
+      loadData();
     } catch (err: any) {
       alert(err.message || String(err));
     }
@@ -164,16 +154,11 @@ export default function CloudWorkspace({ session }: { session: any }) {
     let addedCount = 0;
     for (const email of emailList) {
       try {
-        const res = await fetch(`/api/v1/cloud/workspaces/${activeWorkspace.id}/members`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        await api(`/cloud/workspaces/${activeWorkspace.id}/members`, {
+          method: 'POST',
           body: JSON.stringify({ email, role: 'Member' })
         });
-        if (res.ok) { 
-          addedCount++; 
-        } else {
-          const data = await res.json();
-          alert(`Failed to add ${email}: ${data.detail || 'Unknown error'}`);
-        }
+        addedCount++; 
       } catch (err: any) {
         alert(`Error adding ${email}: ${err.message || String(err)}`);
       }
@@ -193,13 +178,13 @@ export default function CloudWorkspace({ session }: { session: any }) {
     const report = reports[idx];
     if (!report || !activeWorkspace) return;
     try {
-      const res = await fetch(`/api/v1/cloud/workspaces/${activeWorkspace.id}/reports`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+      await api(`/cloud/workspaces/${activeWorkspace.id}/reports`, {
+        method: 'POST',
         body: JSON.stringify({ report_id: report.id })
       });
-      const data = await res.json();
-      if (res.ok) { alert(`Report "${report.name}" shared to workspace!`); loadWorkspace(activeWorkspace.id); loadData(); }
-      else alert(data.detail || 'Failed to share report');
+      alert(`Report "${report.name}" shared to workspace!`); 
+      loadWorkspace(activeWorkspace.id); 
+      loadData();
     } catch (err: any) {
       alert(err.message || String(err));
     }
