@@ -519,13 +519,17 @@ def cloud_list_reports(authorization:str|None=Header(default=None)):
 @app.post('/api/v1/cloud/sync-data')
 def cloud_sync_data(project: dict, authorization: str | None = Header(default=None)):
     try:
-        from .supabase_store import _admin_client
-        sb = _admin_client()
-    except Exception:
+        from .supabase_store import _client
+        token = authorization.split("Bearer ")[1] if authorization and "Bearer " in authorization else None
+        sb = _client(token)
+    except Exception as e:
+        print("Failed to init supabase client:", e)
         return {'project': project}
         
     try:
-        sb.storage.create_bucket('vtab_data', {'public': True})
+        # We assume the bucket is already created manually by the user via SQL
+        # sb.storage.create_bucket('vtab_data', {'public': True})
+        pass
     except Exception:
         pass
 
