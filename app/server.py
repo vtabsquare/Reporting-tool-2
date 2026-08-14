@@ -516,6 +516,55 @@ def cloud_list_reports(authorization:str|None=Header(default=None)):
     user_id=_supabase_user_id_from_token(authorization)
     return _list(user_id)
 
+@app.post('/api/v1/cloud/sync-data')
+def cloud_sync_data(project: dict, authorization: str | None = Header(default=None)):
+    try:
+        from .supabase_store import _admin_client
+        sb = _admin_client()
+    except Exception:
+        return {'project': project}
+        
+    try:
+        sb.storage.create_bucket('vtab_data', {'public': True})
+    except Exception:
+        pass
+
+    import os, hashlib
+    supabase_url = os.environ.get('VITE_SUPABASE_URL', '').rstrip('/')
+    if not supabase_url: return {'project': project}
+
+    from .local_engine import _parquet_path
+    
+    tables = project.get('model', {}).get('tables', {})
+    for t_name, t_def in tables.items():
+        if t_def.get('type') == 'postgresql' or t_def.get('sourceUrl'):
+            continue
+        
+        path = _parquet_path(t_name)
+        if path.exists():
+            try:
+                with open(path, 'rb') as f:
+                    file_bytes = f.read()
+                    h = hashlib.md5(file_bytes).hexdigest()[:8]
+                    # Make it url safe
+                    safe_name = ''.join(c if c.isalnum() else '_' for c in t_name)
+                    filename = f"{safe_name}_{h}.parquet"
+                    
+                    try:
+                        sb.storage.from_('vtab_data').upload(
+                            filename, 
+                            file_bytes, 
+                            {"content-type": "application/octet-stream", "upsert": "true"}
+                        )
+                    except Exception:
+                        pass
+                    
+                    t_def['sourceUrl'] = f"{supabase_url}/storage/v1/object/public/vtab_data/{filename}"
+            except Exception as e:
+                print('Error syncing', t_name, e)
+
+    return {'project': project}
+
 @app.post('/api/v1/cloud/upload-package')
 async def cloud_upload_package(file:UploadFile=File(...), authorization:str|None=Header(default=None)):
     """Upload a .vtabpkg or .vtabapp to the cloud."""

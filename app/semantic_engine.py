@@ -204,6 +204,12 @@ def execute(model,req,rls=()):
         _CACHE_MISSES+=1
     sql,p=compile_query(model,req,rls);c=connect()
     try:
+        from .local_engine import _sql_string
+        for t_name, t_def in model.get('tables', {}).items():
+            source_url = t_def.get('sourceUrl')
+            if source_url:
+                c.execute(f"CREATE OR REPLACE VIEW {_sql_string(t_name)} AS SELECT * FROM read_parquet({_sql_string(source_url)})")
+                
         cur=c.execute(sql,p);cols=[d[0] for d in cur.description]
         rows=[dict(zip(cols,r)) for r in cur.fetchall()]
     finally:c.close()

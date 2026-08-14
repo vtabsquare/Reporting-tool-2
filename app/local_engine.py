@@ -94,6 +94,10 @@ def connect(read_only:bool=False):
     TEMP.mkdir(parents=True,exist_ok=True)
     duckdb=_duckdb()
     con=duckdb.connect(str(ANALYTICS),read_only=read_only)
+    try:
+        con.execute("INSTALL httpfs; LOAD httpfs;")
+    except Exception:
+        pass # Ignore in locked/read-only mode if already installed
     threads=max(1,min(os.cpu_count() or 4,16))
     memory=os.getenv('VTAB_MEMORY_LIMIT','4GB')
     con.execute(f"SET threads={threads}")
