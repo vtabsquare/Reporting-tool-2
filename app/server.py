@@ -518,28 +518,33 @@ def cloud_list_reports(authorization:str|None=Header(default=None)):
 
 @app.post('/api/v1/cloud/sync-data')
 def cloud_sync_data(project: dict, authorization: str | None = Header(default=None)):
-    try:
-        token = authorization.split("Bearer ")[1] if authorization and "Bearer " in authorization else None
-        if not token: return {'project': project}
-        import os
-        from supabase import create_client
-        url = os.environ.get("VITE_SUPABASE_URL", "").rstrip('/')
-        sb = create_client(url, token)
-    except Exception as e:
-        print("Failed to init supabase client:", e)
-        return {'project': project}
-        
-    try:
-        # We assume the bucket is already created manually by the user via SQL
-        # sb.storage.create_bucket('vtab_data', {'public': True})
-        pass
-    except Exception:
-        pass
-
     import os, hashlib
     supabase_url = os.environ.get('VITE_SUPABASE_URL', '').rstrip('/')
-    if not supabase_url: return {'project': project}
+    anon_key = os.environ.get('VITE_SUPABASE_ANON_KEY', '')
+    if not supabase_url or not anon_key:
+        return {'project': project}
 
+    # Determine the best bearer token:
+    # - If the user is logged in via Supabase (JWT starting with eyJ), use their token.
+    # - Otherwise fall back to the anon key (works if RLS allows anon inserts).
+    user_token = None
+    if authorization and 'Bearer ' in authorization:
+        candidate = authorization.split('Bearer ')[1].strip()
+        if candidate.startswith('eyJ'):  # valid JWT
+            user_token = candidate
+    bearer = user_token or anon_key
+
+    try:
+        from storage3._sync.client import SyncStorageClient
+        headers = {
+            'apiKey': anon_key,
+            'Authorization': f'Bearer {bearer}'
+        }
+        sb_storage = SyncStorageClient(f'{supabase_url}/storage/v1', headers)
+    except Exception as e:
+        print('Failed to init storage client:', e)
+        return {'project': project}
+        
     from .local_engine import _parquet_path
     
     tables = project.get('model', {}).get('tables', {})
@@ -558,13 +563,13 @@ def cloud_sync_data(project: dict, authorization: str | None = Header(default=No
                     filename = f"{safe_name}_{h}.parquet"
                     
                     try:
-                        sb.storage.from_('vtab_data').upload(
+                        sb_storage.from_('vtab_data').upload(
                             filename, 
                             file_bytes, 
                             {"content-type": "application/octet-stream", "upsert": "true"}
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        print("Failed to upload:", exc)
                     
                     t_def['sourceUrl'] = f"{supabase_url}/storage/v1/object/public/vtab_data/{filename}"
             except Exception as e:
