@@ -519,9 +519,12 @@ def cloud_list_reports(authorization:str|None=Header(default=None)):
 @app.post('/api/v1/cloud/sync-data')
 def cloud_sync_data(project: dict, authorization: str | None = Header(default=None)):
     try:
-        from .supabase_store import _client
         token = authorization.split("Bearer ")[1] if authorization and "Bearer " in authorization else None
-        sb = _client(token)
+        if not token: return {'project': project}
+        import os
+        from supabase import create_client
+        url = os.environ.get("VITE_SUPABASE_URL", "").rstrip('/')
+        sb = create_client(url, token)
     except Exception as e:
         print("Failed to init supabase client:", e)
         return {'project': project}
