@@ -208,7 +208,8 @@ def execute(model,req,rls=()):
         for t_name, t_def in model.get('tables', {}).items():
             source_url = t_def.get('sourceUrl')
             if source_url:
-                view_name = t_name.replace('"', '""')
+                physical_name = t_def.get('physical', t_name)
+                view_name = physical_name.replace('"', '""')
                 c.execute(f"CREATE OR REPLACE VIEW \"{view_name}\" AS SELECT * FROM read_parquet({_sql_string(source_url)})")
                 
         cur=c.execute(sql,p);cols=[d[0] for d in cur.description]

@@ -86,7 +86,7 @@ async def secure_authoring_api(request, call_next):
     if request.method.upper() == 'OPTIONS':
         return await call_next(request)
     enforce=os.environ.get('VTAB_ENFORCE_API_AUTH','0')=='1'
-    public=path in ('/api/v1/health','/api/v1/auth/status','/api/v1/auth/login','/api/v1/auth/me','/api/v1/auth/password-reset/request','/api/v1/auth/password-reset/confirm')
+    public=path in ('/api/v1/health','/api/v1/auth/status','/api/v1/auth/login','/api/v1/auth/me','/api/v1/auth/password-reset/request','/api/v1/auth/password-reset/confirm', '/api/v1/cloud/sync-data')
     consumer=path.startswith('/api/v1/published')
     if enforce and path.startswith('/api/v1/') and not public and not consumer:
         token=(request.headers.get('authorization') or '').replace('Bearer ','',1).strip()
@@ -524,15 +524,8 @@ def cloud_sync_data(project: dict, authorization: str | None = Header(default=No
     if not supabase_url or not anon_key:
         return {'project': project}
 
-    # Determine the best bearer token:
-    # - If the user is logged in via Supabase (JWT starting with eyJ), use their token.
-    # - Otherwise fall back to the anon key (works if RLS allows anon inserts).
-    user_token = None
-    if authorization and 'Bearer ' in authorization:
-        candidate = authorization.split('Bearer ')[1].strip()
-        if candidate.startswith('eyJ'):  # valid JWT
-            user_token = candidate
-    bearer = user_token or anon_key
+    # Always use the anon_key for uploads since the user's RLS policy was created for the 'anon' role.
+    bearer = anon_key
 
     try:
         from storage3._sync.client import SyncStorageClient
@@ -545,15 +538,48 @@ def cloud_sync_data(project: dict, authorization: str | None = Header(default=No
         print('Failed to init storage client:', e)
         return {'project': project}
         
-    from .local_engine import _parquet_path
+    from .local_engine import COLUMNAR
+    from pathlib import Path as _Path
     
+    def _find_parquet(t_name: str, t_def: dict):
+        """Try multiple name variants to find the physical parquet file.
+        
+        Uses COLUMNAR directly (AppData path) rather than _parquet_path which
+        may resolve relative to the source directory in dev mode.
+        """
+        physical = t_def.get('physical', '')
+        candidates = [
+            t_name,                          # exact semantic name
+            physical,                        # physical name from model definition
+            f'ETL_{t_name}',                 # ETL transform prefix
+            f'Imported_{t_name}',            # Direct import prefix
+        ]
+        if physical:
+            candidates += [
+                f'ETL_{physical}',
+                f'Imported_{physical}',
+                # physical already has prefix; also try stripping it
+                physical.removeprefix('ETL_'),
+                physical.removeprefix('Imported_'),
+            ]
+        # Build the real columnar path (AppData) - sanitize same way as _parquet_path
+        real_columnar = _Path(str(COLUMNAR))
+        for name in dict.fromkeys(candidates):  # deduplicate, preserve order
+            if not name:
+                continue
+            safe = ''.join(c if c.isalnum() or c == '_' else '_' for c in name).strip('_') or 'Table'
+            p = real_columnar / f'{safe[:100]}.parquet'
+            if p.exists():
+                return p
+        return None
+
     tables = project.get('model', {}).get('tables', {})
     for t_name, t_def in tables.items():
         if t_def.get('type') == 'postgresql' or t_def.get('sourceUrl'):
             continue
         
-        path = _parquet_path(t_name)
-        if path.exists():
+        path = _find_parquet(t_name, t_def)
+        if path is not None:
             try:
                 with open(path, 'rb') as f:
                     file_bytes = f.read()
