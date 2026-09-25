@@ -1,0 +1,33 @@
+name: Build Cloudflare DEV Frontend Candidate
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-dev-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build workspace-only DEV frontend
+        env:
+          VITE_APP_ENV: development
+        run: npm run build:web
+      - name: Verify frontend artifact
+        run: test -f dist-web/index.html
+      - name: Archive validated frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporting-studio-dev-frontend
+          path: dist-web/
+          retention-days: 7
