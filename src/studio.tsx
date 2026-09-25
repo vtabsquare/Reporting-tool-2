@@ -10,6 +10,9 @@ function Home(){
       <span className="eyebrowGlass">VTAB SELF-SERVICE BI</span>
       <h1>Welcome to VTAB Studio.</h1>
       <p>Your workspace for advanced analytics, reporting, and data modeling.</p>
+      <a href="https://www.vtabsquare.com/?demo=1&product=reporting-studio&source=reporting-studio-demo" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8,margin:'12px 0 20px',fontWeight:700,color:'#2563eb',textDecoration:'underline',textUnderlineOffset:4}}>
+        Contact for Demo <ExternalLink size={16}/>
+      </a>
       
       <div className="lifecycleChoicesGlass">
         <button className="choiceCard primaryCard" onClick={newReport}>
