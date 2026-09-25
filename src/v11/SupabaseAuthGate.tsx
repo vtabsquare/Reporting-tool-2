@@ -120,6 +120,7 @@ export default function SupabaseAuthGate({ onSignedIn }: Props) {
         <button className="primary" onClick={submit} disabled={disabled}>
           {buttonText}
         </button>
+        <a href="https://www.vtabsquare.com/?demo=1&product=reporting-studio&source=reporting-tool-2" target="_blank" rel="noopener noreferrer" style={{display:"block",textAlign:"center",marginTop:12,padding:"12px 16px",borderRadius:10,background:"#2563eb",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none"}}>Contact for Demo ↗</a>
         <div className="bootstrapHint">
           {mode === "login"
             ? <><span>Don&apos;t have an account?</span><button style={{background:"none",border:"none",color:"#2563eb",cursor:"pointer",padding:0,fontWeight:700}} onClick={() => { setErr(""); setInfo(""); setMode("register"); }}>Register here</button><button style={{background:"none",border:"none",color:"#2563eb",cursor:"pointer",padding:0,fontWeight:700,marginLeft:12}} onClick={() => { setErr(""); setInfo(""); setMode("forgot"); }}>Forgot password?</button></>
