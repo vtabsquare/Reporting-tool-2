@@ -65,6 +65,7 @@ export default function Topbar(){
     </div>
     
     <div className="topActionsGlass">
+      <a href="https://www.vtabsquare.com/?demo=1&product=reporting-studio&source=reporting-tool-2" target="_blank" rel="noopener noreferrer" className="btnGlass primary" style={{textDecoration:"none",whiteSpace:"nowrap"}}>Contact for Demo ↗</a>
       <div className="searchGlass">
         <Search size={16} className="searchIcon"/>
         <input placeholder="Search reports, data..." />
